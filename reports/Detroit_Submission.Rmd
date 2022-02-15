@@ -1,0 +1,158 @@
+---
+title: "Detroit"
+author: "Jonathan Mishory"
+date: "2/11/2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+library(tidyverse)
+library(lubridate)
+
+
+
+devtools::install_github("cmf-uchicago/cmfproperty", force = TRUE)
+
+library(cmfproperty)
+```
+
+Template file. Code will be included in folded blocks in the output to facilitate grading. Please knit this file and commit both the rmd and the html output. If you add external files to your analysis, please commit them to the files folder in this repository. NOTE: please do not commit large (15MB+) files to GitHub. Instead please denote the origin of the files in your code. 
+install.packages("RSQLite")
+```{r}
+
+con <- DBI::dbConnect(RSQLite::SQLite(), "GitHub/detroit-jonathanmishory/database/detroit.sqlite")
+# sales tbl
+dplyr::tbl(con, 'sales')
+# convert to tibble
+sales <- dplyr::tbl(con, 'sales') %>% dplyr::collect()
+# sql query
+dplyr::tbl(con, 'sales') %>% count(year(sale_date))
+sales %>% count(year(sale_date))
+dplyr::tbl(con, 'sales') %>% count(year(sale_date)) %>% show_query()
+
+sales <- sales %>%
+  rename(parcel_number = parcel_num)
+
+# sales tbl
+dplyr::tbl(con, 'foreclosures')
+# convert to tibble
+foreclosures <- dplyr::tbl(con, 'foreclosures') %>% dplyr::collect()
+
+# foreclusures tbl
+dplyr::tbl(con, 'foreclosures')
+# convert to tibble
+foreclosures <- dplyr::tbl(con, 'foreclosures') %>% dplyr::collect()
+foreclosures <- foreclosures %>%
+  rename(parcel_number = prop_parcelnum)
+# parcels tbl
+dplyr::tbl(con, 'parcels')
+# convert to tibble
+parcels <- dplyr::tbl(con, 'parcels') %>% dplyr::collect()
+
+
+# parcels_historic tbl
+dplyr::tbl(con, 'parcels_historic')
+# convert to tibble
+parcels_historic <- dplyr::tbl(con, 'parcels_historic') %>% dplyr::collect()
+
+# blight tbl
+dplyr::tbl(con, 'blight')
+# convert to tibble
+blight <- dplyr::tbl(con, 'blight') %>% dplyr::collect()
+
+# assessments tbl
+dplyr::tbl(con, 'assessments')
+# convert to tibble
+assessments <- dplyr::tbl(con, 'assessments') %>% dplyr::collect()
+```
+sale <- "sales"
+
+
+```{r}
+summary(sales$sale_price)
+#Mean 22924
+summary(parcels$sale_price)
+#mean 42154
+summary(parcels$assessed_value)
+#mean 24503
+summary(parcels$taxable_value)
+#mean 13600
+
+
+#There is a noticeable difference between the mean assessed value and the mean taxable value. This is inline with the literature about Detroit housing, as property taxes assessments have been reported as being illegally inflated in order for the government to gain more revenue from property taxes. 
+```
+
+
+```{r}
+
+
+
+mergedsales<-merge(x=sales,y=parcels,by="parcel_number",all.x=TRUE)
+
+remove(ratios)
+
+mergedsales$SALE_YEAR <- year(mergedsales$sale_date.x)
+
+#ratios <-
+# cmfproperty::reformat_data(
+#  data = "mergedsales",
+# sale_col = "sale_price.x",
+#assessment_col = "assessed_value",
+#sale_year_col = "Year",
+#)
+#subscript out of bounds error
+```
+
+```{r}
+
+
+lm1 <- lm(sale_price.x ~ assessed_value, data = mergedsales)
+summary(lm1)
+#Sale Price vs. Assessed value
+lm2 <- lm(sale_price.x ~ total_square_footage, data = mergedsales)
+summary(lm2)
+#Sale price vs. Square Footage
+lm3 <- lm(sale_price.x ~ is_improved, data = mergedsales)
+summary(lm3)
+#This is a categorical variable for if there are improvements
+
+#All regression terms are statistically significant. However they all have a low R-Square value, meaning there is a weak correlation. 
+
+
+ggplot(mergedsales,aes(sale_price.x,assessed_value)) + geom_point()
+
+```
+
+```{r}
+foreclosures$foreclosure_count <- rowSums( foreclosures[,3:20], na.rm = T )
+
+
+mergedforeclosures <-merge(x=foreclosures,y=parcels,by="parcel_number",all.x=TRUE)
+
+
+lm4 <- lm(foreclosure_count ~ assessed_value, data = mergedforeclosures)
+summary(lm4)
+#Foreclosure count vs. Assessed Value
+lm5 <- lm(foreclosure_count ~ total_square_footage, data = mergedforeclosures)
+summary(lm5)
+#Foreclosure count vs. Square footage
+lm6 <- lm(foreclosure_count ~ is_improved, data = mergedforeclosures)
+summary(lm6)
+#Foreclosure count vs. categorical variable- is improved. 
+
+#All regression terms are statistically significant. However they all have a low R-Square value, meaning there is a weak correlation. 
+
+
+ggplot(mergedforeclosures,aes(foreclosure_count,assessed_value)) + geom_point()
+
+```
+
+
+
+
+
+
+
+
